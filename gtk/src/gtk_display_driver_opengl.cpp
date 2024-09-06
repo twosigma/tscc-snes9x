@@ -9,6 +9,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/time.h>
+#ifdef TSCC
+#include <memory>
+#include <zmq.hpp>
+#endif
 
 #include "gtk_display.h"
 #include "gtk_display_driver_opengl.h"
@@ -16,6 +20,8 @@
 
 #include "snes9x_imgui.h"
 #include "imgui_impl_opengl3.h"
+
+#include <iostream>
 
 static const GLchar *stock_vertex_shader_110 =
 "#version 110\n"
@@ -150,6 +156,8 @@ void S9xOpenGLDisplayDriver::update(uint16_t *buffer, int width, int height, int
     }
 
     swap_buffers();
+
+    net_update(buffer, width, height, stride_in_pixels);
 }
 
 void *S9xOpenGLDisplayDriver::get_parameters()
@@ -446,6 +454,10 @@ int S9xOpenGLDisplayDriver::init()
         ImGui_ImplOpenGL3_Init();
     }
 
+#ifdef TSCC
+    net_init();
+#endif
+
     initialized = true;
 
     return 0;
@@ -490,6 +502,10 @@ void S9xOpenGLDisplayDriver::deinit()
     }
 
     gladLoaderUnloadGL();
+
+#ifdef TSCC
+    net_deinit();
+#endif
 }
 
 int S9xOpenGLDisplayDriver::query_availability()
@@ -522,3 +538,38 @@ bool S9xOpenGLDisplayDriver::is_ready()
 
     return false;
 }
+
+
+#ifdef TSCC
+///////////////////////////////////////
+// The following are added to support transmitting the emulator's video output over the network
+
+void S9xOpenGLDisplayDriver::net_init()
+{
+    // todo: make configurable
+    const std::string tsccAddress = "tcp://127.0.0.1:5561";
+    this->zmqContext = std::make_unique<zmq::context_t>(1);
+    this->zmqSocket = std::make_unique<zmq::socket_t>(*this->zmqContext, zmq::socket_type::push);
+    std::cout << "Connecting to TSCC on " << tsccAddress << std::endl;
+    this->zmqSocket->set(zmq::sockopt::sndhwm, 1);  // set high water mark to 1
+    this->zmqSocket->connect(tsccAddress);
+}
+
+void S9xOpenGLDisplayDriver::net_update(uint16_t *buffer, int width, int height, int stride_in_pixels)
+{
+    // data is interlaced and skips every row, so fill tsccFrameBuffer skipping every other row
+    for (int y = 0; y < height; y++)
+    {
+        memcpy(tsccFrameBuffer + y * width * 2, (uint8_t *)(buffer + y * stride_in_pixels), width * 2);
+    }
+
+    this->zmqSocket->send(zmq::message_t(tsccFrameBuffer, width * height * 2), zmq::send_flags::none);
+}
+
+void S9xOpenGLDisplayDriver::net_deinit()
+{
+    this->zmqSocket->close();
+    this->zmqContext->close();
+}
+
+#endif

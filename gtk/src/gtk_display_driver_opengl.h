@@ -25,6 +25,11 @@
 #include "shaders/glsl.h"
 #include "vulkan/std_chrono_throttle.hpp"
 
+#ifdef TSCC
+#include <memory>
+#include <zmq.hpp>
+#endif
+
 #define BUFFER_OFFSET(i) ((char *)(i))
 
 class S9xOpenGLDisplayDriver : public S9xDisplayDriver
@@ -50,6 +55,10 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
     void update_texture_size(int width, int height);
     bool create_context();
     void resize();
+
+    void net_init();
+    void net_update(uint16_t *buffer, int width, int height, int stride_in_pixels);
+    void net_deinit();
 
     GLuint stock_program;
     GLuint coord_buffer;
@@ -78,6 +87,12 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
 #endif
 #ifdef GDK_WINDOWING_WAYLAND
     WaylandEGLContext wl;
+#endif
+
+#ifdef TSCC
+    std::unique_ptr<zmq::context_t> zmqContext;
+    std::unique_ptr<zmq::socket_t> zmqSocket;
+    uint8_t tsccFrameBuffer[256*224];
 #endif
 };
 

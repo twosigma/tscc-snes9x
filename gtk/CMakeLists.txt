@@ -13,6 +13,7 @@ option(USE_XBRZ "Build the XBRZ family of filters" ON)
 option(USE_SYSTEMZIP "Force use of system minizip" ON)
 option(USE_WAYLAND "Build support for Wayland" ON)
 option(DANGEROUS_HACKS "Allow dangerous hacks to be used" ON)
+option(TSCC "Enable Two Sigma Coding Competition (TSCC) support" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -238,6 +239,19 @@ if(DANGEROUS_HACKS)
     list(APPEND DEFINES ALLOW_CPU_OVERCLOCK)
     message("Dangerous hacks are enabled. Use at your own risk.")
 endif()
+
+if(TSCC)
+    message("Two Sigma Coding Competition (TSCC) support enabled.")
+    list(APPEND DEFINES TSCC)
+    pkg_check_modules(PC_ZeroMQ QUIET zmq)
+    find_path(ZeroMQ_INCLUDE_DIR
+            NAMES zmq.hpp
+            PATHS ${PC_ZeroMQ_INCLUDE_DIRS}
+            )
+    list(APPEND INCLUDES ${PC_ZeroMQ_INCLUDE_DIRS})
+    list(APPEND LIBS zmq)
+endif()
+
 
 list(APPEND SOURCES
     ../common/audio/s9x_sound_driver.hpp
