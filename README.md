@@ -59,3 +59,17 @@ Download nightly builds from continuous integration:
 [libretro_nintendo-switch-libnx]: https://api.cirrus-ci.com/github/snes9xgit/snes9x.svg?task=libretro_nintendo-switch-libnx
 [libretro_nintendo-ngc]: https://api.cirrus-ci.com/github/snes9xgit/snes9x.svg?task=libretro_nintendo-ngc
 [libretro_playstation-psp]: https://api.cirrus-ci.com/github/snes9xgit/snes9x.svg?task=libretro_playstation-psp
+
+# How to build (Linux)
+```bash
+git clone https://github.com/twosigma/tscc-snes9x.git
+cd tscc-snes9x/
+git submodule update --init
+sudo apt-get install libsdl2-dev libgtkmm-3.0-dev libasound-dev minizip gettext ninja-build libepoxy-dev xorg openbox
+echo "export PATH=\"`python3 -m site --user-base`/bin:$PATH\"" >> ~/.bashrc
+source ~/.bashrc
+cd gtk && cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -S . -B build
+cd build
+ninja
+sudo ninja install
+```
